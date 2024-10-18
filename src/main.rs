@@ -27,8 +27,11 @@ async fn main() {
 
                 match find_places_by_name(name).await {
                     Ok(places) => {
-                        for place in places {
-                            println!("Found: {}", place);
+                        for (name, longitude, latitude) in places {
+                            println!(
+                                "Found: {} (Longitude: {}, Latitude: {})",
+                                name, longitude, latitude
+                            );
                         }
                     }
                     Err(e) => eprintln!("Error: {}", e),
