@@ -3,6 +3,10 @@
 This is a simple project to read and process geospatial data from OpenStreetMap. The project is written in Rust and uses a database PostgreSQL with PostGIS extension.
 
 tree --prune -I 'target'
+bloque de codigo
+
+
+```markdown
 .
 ├── Cargo.lock
 ├── Cargo.toml
@@ -28,6 +32,6 @@ tree --prune -I 'target'
     └── utils
         ├── load_graph.rs
         └── mod.rs
-
+```
 7 directories, 18 files
 
