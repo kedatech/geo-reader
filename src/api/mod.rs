@@ -1,12 +1,15 @@
 use actix_web::web;
 
 mod handlers;
-use handlers::find_places; // Importa la función desde handlers
+use handlers::{find_places, get_nearby_routes_endpoint}; // Importa ambas funciones desde `handlers`
 
 pub fn config(cfg: &mut web::ServiceConfig) {
+
+    print!("Configuring routes...");
+    
     cfg.service(
         web::scope("/api")
             .route("/places", web::get().to(find_places))
-            // Agrega otras rutas aquí si las tienes
+            .route("/nearby_routes", web::get().to(get_nearby_routes_endpoint)) 
     );
 }

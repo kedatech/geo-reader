@@ -16,7 +16,7 @@ pub async fn find_nearby_places(
             ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography,
             way::geography,
             $3
-        )
+        )m
         LIMIT 10;
     ";
 
