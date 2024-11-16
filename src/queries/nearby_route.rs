@@ -1,13 +1,31 @@
 use tokio_postgres::{Client, Error};
 use std::time::SystemTime;
+use serde::Serialize;
 
-/// Consulta rutas cercanas a una ubicación dada y devuelve un array de resultados.
+#[derive(Serialize)]
+pub struct Route {
+    route_id: i32,
+    bus_id: i32,
+    direction_id: Option<i32>,
+    route_geometry: String,
+    distance: f64,
+    number_route: String,
+    code_route: String,
+    fees: Option<f64>,
+    special_fees: Option<f64>,
+    first_trip: Option<SystemTime>,
+    last_trip: Option<SystemTime>,
+    frequency: Option<String>,
+    photo_url: Option<String>,
+}
+
+
 pub async fn get_nearby_routes(
     latitude: f64,
     longitude: f64,
     max_distance: f64,
     client: &Client
-) -> Result<Vec<(i32, i32, Option<i32>, String, f64, String, String, Option<f64>, Option<f64>, Option<SystemTime>, Option<SystemTime>, Option<String>, Option<String>)>, Error> {
+) -> Result<Vec<Route>, Error> {
     let query = "
         WITH point AS (
             SELECT ST_SetSRID(ST_MakePoint($1, $2), 4326) AS geom
@@ -16,7 +34,7 @@ pub async fn get_nearby_routes(
             r.id AS route_id,
             r.bus_id,
             r.direction_id,
-            ST_AsGeoJSON(r.geometry)::TEXT AS route_geometry,  -- Devuelve como texto
+            ST_AsGeoJSON(r.geometry)::TEXT AS route_geometry,
             ST_Distance(p.geom, r.geometry) AS distance,
             b.number_route,
             b.code_route,
@@ -33,27 +51,29 @@ pub async fn get_nearby_routes(
         JOIN 
             point p ON ST_DWithin(p.geom, r.geometry, $3)
         ORDER BY 
-            distance;
+            distance
+        LIMIT 10;
     ";
 
     let rows = client.query(query, &[&longitude, &latitude, &max_distance]).await?;
 
-    let routes: Vec<(i32, i32, Option<i32>, String, f64, String, String, Option<f64>, Option<f64>, Option<SystemTime>, Option<SystemTime>, Option<String>, Option<String>)> = rows.iter()
-        .map(|row| (
-            row.get(0),   // route_id
-            row.get(1),   // bus_id
-            row.get(2),   // direction_id (como Option<i32>)
-            row.get(3),   // route_geometry como String
-            row.get(4),   // distance
-            row.get(5),   // number_route
-            row.get(6),   // code_route
-            row.get(7),   // fees (como Option<f64>)
-            row.get(8),   // special_fees (como Option<f64>)
-            row.get(9),   // first_trip (como Option<SystemTime>)
-            row.get(10),  // last_trip (como Option<SystemTime>)
-            row.get::<_, Option<String>>(11),  // frequency (como Option<String>)
-            row.get(12)   // photo_url (como Option<String>)
-        ))
+    // Mapeamos las filas a la estructura `Route`
+    let routes: Vec<Route> = rows.iter()
+        .map(|row| Route {
+            route_id: row.get(0),
+            bus_id: row.get(1),
+            direction_id: row.get(2),
+            route_geometry: row.get(3),
+            distance: row.get(4),
+            number_route: row.get(5),
+            code_route: row.get(6),
+            fees: row.get(7),
+            special_fees: row.get(8),
+            first_trip: row.get(9),
+            last_trip: row.get(10),
+            frequency: row.get(11),
+            photo_url: row.get(12),
+        })
         .collect();
 
     Ok(routes)

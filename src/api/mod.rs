@@ -1,7 +1,7 @@
 use actix_web::web;
 
 mod handlers;
-use handlers::{find_places, get_nearby_routes_endpoint}; // Importa ambas funciones desde `handlers`
+use handlers::{find_places, get_nearby_routes_endpoint};
 
 pub fn config(cfg: &mut web::ServiceConfig) {
 
