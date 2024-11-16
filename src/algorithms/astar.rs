@@ -36,19 +36,18 @@ pub fn astar<V: Ord + Copy, E: Ord + Copy + Add<Output = E> + Zero>(
     target: V,
     heuristic: impl Fn(V) -> E,
 ) -> Option<(E, Vec<V>)> {
-    // traversal front
     let mut queue = BinaryHeap::new();
-    // maps each node to its predecessor in the final path
     let mut previous = BTreeMap::new();
-    // weights[v] is the accumulated weight from start to v
     let mut weights = BTreeMap::new();
-    // initialize traversal
+
+    // Inicializamos el peso del nodo de inicio en 0.
     weights.insert(start, E::zero());
     queue.push(Candidate {
         estimated_weight: heuristic(start),
         real_weight: E::zero(),
         state: start,
     });
+
     while let Some(Candidate {
         real_weight,
         state: current,
@@ -58,39 +57,44 @@ pub fn astar<V: Ord + Copy, E: Ord + Copy + Add<Output = E> + Zero>(
         if current == target {
             break;
         }
-        for (&next, &weight) in &graph[&current] {
-            let real_weight = real_weight + weight;
-            if weights
-                .get(&next)
-                .map_or(true, |&weight| real_weight < weight)
-            {
-                // current allows us to reach next with lower weight (or at all)
-                // add next to the front
-                let estimated_weight = real_weight + heuristic(next);
-                weights.insert(next, real_weight);
-                queue.push(Candidate {
-                    estimated_weight,
-                    real_weight,
-                    state: next,
-                });
-                previous.insert(next, current);
+
+        // Verificamos si el nodo actual tiene vecinos en el grafo.
+        if let Some(neighbors) = graph.get(&current) {
+            for (&next, &weight) in neighbors {
+                let real_weight = real_weight + weight;
+                if weights
+                    .get(&next)
+                    .map_or(true, |&w| real_weight < w)
+                {
+                    let estimated_weight = real_weight + heuristic(next);
+                    weights.insert(next, real_weight);
+                    queue.push(Candidate {
+                        estimated_weight,
+                        real_weight,
+                        state: next,
+                    });
+                    previous.insert(next, current);
+                }
             }
+        } else {
+            // Si no hay vecinos, continuamos con el siguiente nodo.
+            continue;
         }
     }
+
     let weight = if let Some(&weight) = weights.get(&target) {
         weight
     } else {
-        // we did not reach target from start
         return None;
     };
-    // build path in reverse
+
     let mut current = target;
     let mut path = vec![current];
     while current != start {
         let prev = previous
             .get(&current)
             .copied()
-            .expect("We reached the target, but are unable to reconsistute the path");
+            .expect("Ruta válida pero no se pudo reconstruir el camino");
         current = prev;
         path.push(current);
     }
