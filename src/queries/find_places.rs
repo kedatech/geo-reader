@@ -1,10 +1,10 @@
-use crate::db::connect_to_db;
-use tokio_postgres::Error;
+use tokio_postgres::{Client, Error};
 
 /// Consulta lugares por nombre y devuelve un array de resultados.
-pub async fn find_places_by_name(name: &str) -> Result<Vec<(String, f64, f64)>, Error> {
-    let client = connect_to_db().await?;
-
+pub async fn find_places_by_name(
+    name: &str,
+    client: &Client
+) -> Result<Vec<(String, f64, f64)>, Error> {
     let query = "
         SELECT 
             name, 
