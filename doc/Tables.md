@@ -1,0 +1,27 @@
+     tablename
+--------------------
+ bus
+ bus_stops
+ buses
+ departments
+ detours
+ direction_routes
+ fav_routes
+ planet_osm_line
+ planet_osm_nodes
+ planet_osm_point
+ planet_osm_polygon
+ planet_osm_rels
+ planet_osm_roads
+ planet_osm_ways
+ roles
+ route_bus_dto
+ routes
+ spatial_ref_sys
+ stops
+ subtype_bus
+ subtype_buses
+ terminals
+ type_bus
+ type_buses
+ users

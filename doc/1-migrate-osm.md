@@ -95,7 +95,13 @@ Aquí tienes una **pequeña guía paso a paso** para migrar un archivo **`.osm.p
 1. **Ejecuta el siguiente comando** para importar los datos:
 
    ```bash
-   osm2pgsql -d osmdb --create --slim -G --hstore -C 2000 --number-processes 4 ~/Descargas/el-salvador-latest.osm.pbf
+   osm2pgsql -d yourdb --create --slim -G --hstore -C 2000 --number-processes 4 ~/Descargas/el-salvador-latest.osm.pbf
+   ```
+
+   este comando puede fallar en unos casos, otro ejemplo es el siguiente:
+
+   ```bash
+   osm2pgsql -d yourdb -U postgres --create --slim -G --hstore -C 512 --number-processes 4 el-salvador-latest.osm.pbf
    ```
 
    **Explicación de los parámetros:**
