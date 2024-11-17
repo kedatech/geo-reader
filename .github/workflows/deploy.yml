@@ -1,0 +1,38 @@
+
+on:
+  push:
+    branches:
+      - main  # Despliega cuando se haga push en la rama `main`
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        override: true
+
+    - name: Build the project
+      run: cargo build --release
+
+    - name: Prepare SSH key
+      run: |
+        echo "${{ secrets.SSH_PRIVATE_KEY }}" > deploy_key
+        chmod 600 deploy_key
+      shell: bash
+
+    - name: Upload to VPS and restart service
+      env:
+        USER: usuario  # Cambia esto por tu usuario del VPS
+        HOST: ip_del_vps  # Cambia esto por la IP de tu VPS
+        SERVICE_NAME: geo-reader  # Nombre de tu servicio `systemd` en el servidor
+      run: |
+        scp -i deploy_key -o StrictHostKeyChecking=no target/release/geo-reader $USER@$HOST:/var/www/geo-reader/target/release/
+        ssh -i deploy_key -o StrictHostKeyChecking=no $USER@$HOST 'sudo systemctl restart $SERVICE_NAME'
+      shell: bash
