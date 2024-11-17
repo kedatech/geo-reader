@@ -23,7 +23,9 @@ jobs:
 
     - name: Prepare SSH key
       run: |
-        echo "${{ secrets.SSH_PRIVATE_KEY }}" > deploy_key
+        echo "${{secrets.SSH_PRIVATE_KEY}}" > deploy_key
+        cat deploy_key
+        echo "Fin de la clave"
         chmod 600 deploy_key
       shell: bash
 
@@ -31,8 +33,11 @@ jobs:
       env:
         USER: root
         HOST: ${{ secrets.HOST }}
-        SERVICE_NAME: geo-reader  # Nombre de tu servicio `systemd` en el servidor
+        SERVICE_NAME: geo-reader
       run: |
+        echo "USER: $USER"
+        echo "HOST: ${{ secrets.HOST }}"
+        echo "SERVICE_NAME: geo-reader"
         scp -i deploy_key -o StrictHostKeyChecking=no target/release/geo-reader $USER@$HOST:/var/www/geo-reader/target/release/
         ssh -i deploy_key -o StrictHostKeyChecking=no $USER@$HOST 'sudo systemctl restart $SERVICE_NAME'
       shell: bash
