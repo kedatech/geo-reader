@@ -2,7 +2,7 @@
 on:
   push:
     branches:
-      - main  # Despliega cuando se haga push en la rama `main`
+      - main
 
 jobs:
   build-and-deploy:
@@ -34,6 +34,10 @@ jobs:
         SERVICE_NAME: geo-reader
       run: |
         echo "SERVICE_NAME: geo-reader"
+        # Detener el servicio antes de la transferencia
+        ssh -i deploy_key -o StrictHostKeyChecking=no $USER@$HOST 'sudo systemctl stop $SERVICE_NAME'
+        # Subir el archivo
         scp -i deploy_key -o StrictHostKeyChecking=no target/release/geo-reader $USER@$HOST:/var/www/geo-reader/target/release/
-        ssh -i deploy_key -o StrictHostKeyChecking=no $USER@$HOST 'sudo systemctl restart $SERVICE_NAME'
+        # Reiniciar el servicio
+        ssh -i deploy_key -o StrictHostKeyChecking=no $USER@$HOST 'sudo systemctl start $SERVICE_NAME'
       shell: bash
