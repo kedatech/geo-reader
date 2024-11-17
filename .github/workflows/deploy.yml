@@ -29,8 +29,8 @@ jobs:
 
     - name: Upload to VPS and restart service
       env:
-        USER: usuario  # Cambia esto por tu usuario del VPS
-        HOST: ip_del_vps  # Cambia esto por la IP de tu VPS
+        USER: root
+        HOST: ${{ secrets.HOST }}
         SERVICE_NAME: geo-reader  # Nombre de tu servicio `systemd` en el servidor
       run: |
         scp -i deploy_key -o StrictHostKeyChecking=no target/release/geo-reader $USER@$HOST:/var/www/geo-reader/target/release/
