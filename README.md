@@ -52,8 +52,8 @@ bloque de codigo
 
 Este endpoint devolverá registros que coincidan con el parámetro `name` proporcionado.
 Ejemplo de uso:
-curl -X GET "http://localhost:8080/api/places?name=izalco"
+curl -X GET "http://localhost:8087/api/places?name=izalco"
 
 
 ### nearby
-curl -X GET "http://localhost:8080/api/nearby_routes?latitude=13.6894&longitude=-89.1872&max_distance=1000"
+curl -X GET "http://localhost:8087/api/nearby_routes?latitude=13.6894&longitude=-89.1872&max_distance=1000"
