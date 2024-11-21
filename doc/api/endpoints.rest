@@ -4,3 +4,7 @@ GET http://localhost:8087/api/places?name=izalco
 
 ### Obtener rutas cercanas
 GET http://localhost:8087/api/nearby_routes?latitude=13.6894&longitude=-89.1872&max_distance=1000
+
+### Obtener rutas por número de ruta
+GET http://localhost:8087/api/by_number?number_route=53
+Accept: application/json
