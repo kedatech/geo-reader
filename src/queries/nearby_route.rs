@@ -1,24 +1,6 @@
 use tokio_postgres::{Client, Error};
-use std::time::SystemTime;
-use serde::Serialize;
 
-#[derive(Serialize)]
-pub struct Route {
-    route_id: i32,
-    bus_id: i32,
-    direction_id: Option<i32>,
-    route_geometry: String,
-    distance: f64,
-    number_route: String,
-    code_route: String,
-    fees: Option<f64>,
-    special_fees: Option<f64>,
-    first_trip: Option<SystemTime>,
-    last_trip: Option<SystemTime>,
-    frequency: Option<String>,
-    photo_url: Option<String>,
-}
-
+use crate::queries::_structs::Route;
 
 pub async fn get_nearby_routes(
     latitude: f64,
