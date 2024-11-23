@@ -1,12 +1,13 @@
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use std::time::SystemTime;
-use serde::Serialize;
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize)]
 pub struct Route {
     pub route_id: i32,
     pub bus_id: i32,
     pub direction_id: Option<i32>,
-    pub route_geometry: String,
+    pub route_geometry: Value,
     pub distance: Option<f64>,
     pub number_route: String,
     pub code_route: String,

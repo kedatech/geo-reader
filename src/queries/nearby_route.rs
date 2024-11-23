@@ -2,11 +2,13 @@ use tokio_postgres::{Client, Error};
 
 use crate::queries::_structs::Route;
 
+use serde_json::Value;
+
 pub async fn get_nearby_routes(
     latitude: f64,
     longitude: f64,
     max_distance: f64,
-    client: &Client
+    client: &Client,
 ) -> Result<Vec<Route>, Error> {
     let query = "
         WITH point AS (
@@ -39,22 +41,30 @@ pub async fn get_nearby_routes(
 
     let rows = client.query(query, &[&longitude, &latitude, &max_distance]).await?;
 
-    // Mapeamos las filas a la estructura `Route`
-    let routes: Vec<Route> = rows.iter()
-        .map(|row| Route {
-            route_id: row.get(0),
-            bus_id: row.get(1),
-            direction_id: row.get(2),
-            route_geometry: row.get(3),
-            distance: row.get(4),
-            number_route: row.get(5),
-            code_route: row.get(6),
-            fees: row.get(7),
-            special_fees: row.get(8),
-            first_trip: row.get(9),
-            last_trip: row.get(10),
-            frequency: row.get(11),
-            photo_url: row.get(12),
+    let routes: Vec<Route> = rows
+        .iter()
+        .map(|row| {
+            // Obtén el JSON como un string
+            let geometry_json: String = row.get(3);
+
+            // Deserializa el JSON manualmente
+            let route_geometry: Value = serde_json::from_str(&geometry_json).unwrap_or(Value::Null);
+
+            Route {
+                route_id: row.get(0),
+                bus_id: row.get(1),
+                direction_id: row.get(2),
+                route_geometry, // Ahora es un `serde_json::Value`
+                distance: row.get(4),
+                number_route: row.get(5),
+                code_route: row.get(6),
+                fees: row.get(7),
+                special_fees: row.get(8),
+                first_trip: row.get(9),
+                last_trip: row.get(10),
+                frequency: row.get(11),
+                photo_url: row.get(12),
+            }
         })
         .collect();
 
