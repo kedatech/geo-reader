@@ -1,8 +1,13 @@
 use crate::db::connect_to_db;
-use crate::queries::find_places::find_places_by_name;
-use crate::queries::nearby_route::get_nearby_routes;
-use crate::queries::find_by_number::get_routes_by_number;
+use crate::queries::{
+    find_places::find_places_by_name,
+    nearby_route::get_nearby_routes,
+    find_by_number::get_routes_by_number,
+    find_route::find_route,
+    plan_route::find_route_plans
+};
 use actix_web::{web, HttpResponse, Responder};
+use log::info;
 use serde::Deserialize; // Importa `get_nearby_routes` desde el módulo de consultas
 
 #[derive(Deserialize)]
@@ -94,6 +99,84 @@ pub async fn get_routes_by_number_endpoint(
             eprintln!("Error fetching routes by number: {}", e);
             HttpResponse::InternalServerError()
                 .body(format!("Error fetching routes by number: {}", e))
+        }
+    }
+}
+
+// ! FIND BUS ROUTE
+
+#[derive(Deserialize)]
+pub struct RouteQuery {
+    start_lat: f64,
+    start_lng: f64,
+    end_lat: f64,
+    end_lng: f64,
+}
+
+pub async fn find_bus_route(query: web::Query<RouteQuery>) -> impl Responder {
+    let db_client = match connect_to_db().await {
+        Ok(client) => client,
+        Err(e) => {
+            return HttpResponse::InternalServerError()
+                .body(format!("Database connection error: {}", e))
+        }
+    };
+
+    match find_route(
+        query.start_lat,
+        query.start_lng,
+        query.end_lat,
+        query.end_lng,
+        &db_client,
+    )
+    .await
+    {
+        Ok(routes) => HttpResponse::Ok().json(routes),
+        Err(e) => {
+            eprintln!("Error finding route: {}", e);
+            HttpResponse::InternalServerError().body(format!("Error finding route: {}", e))
+        }
+    }
+}
+
+
+
+
+// ! PLAN ROUTES
+#[derive(Deserialize)]
+pub struct PlanRoutesQuery {
+    start_lat: f64,
+    start_lng: f64,
+    end_lat: f64,
+    end_lng: f64,
+}
+
+pub async fn plan_routes(query: web::Query<PlanRoutesQuery>) -> impl Responder {
+    info!("Planning routes...");
+
+    let db_client = match connect_to_db().await {
+        Ok(client) => client,
+        Err(e) => {
+            return HttpResponse::InternalServerError()
+                .body(format!("Database connection error: {}", e))
+        }
+    };
+
+    info!("Connected to database...");
+
+    match find_route_plans(
+        query.start_lat,
+        query.start_lng,
+        query.end_lat,
+        query.end_lng,
+        &db_client,
+    )
+    .await
+    {
+        Ok(routes) => HttpResponse::Ok().json(routes),
+        Err(e) => {
+            eprintln!("Error planning routes: {}", e);
+            HttpResponse::InternalServerError().body(format!("Error planning routes: {}", e))
         }
     }
 }

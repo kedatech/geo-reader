@@ -1,7 +1,5 @@
 use tokio_postgres::{Client, Error};
-
 use crate::queries::_structs::Route;
-
 use serde_json::Value;
 
 pub async fn get_nearby_routes(

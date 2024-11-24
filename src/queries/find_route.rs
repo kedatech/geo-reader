@@ -1,73 +1,103 @@
-use crate::utils::load_graph_from_db;
-use crate::algorithms::astar;
-use ordered_float::OrderedFloat;
+use tokio_postgres::{Client, Error};
+use crate::queries::_structs::Route;
+use serde_json::Value;
 
-type Coordinate = (OrderedFloat<f64>, OrderedFloat<f64>);
-
-/// Encuentra la ruta más corta entre dos puntos y devuelve la representación en GeoJSON.
-pub async fn find_route_as_geojson( // TODO: no funciona como se espera
-    start_lat: f64, start_lon: f64,
-    end_lat: f64, end_lon: f64
-) -> Result<String, Box<dyn std::error::Error>> {
-    let graph = load_graph_from_db().await?;
-
-    // Buscar los nodos más cercanos al punto de inicio y fin.
-    let start = find_nearest_node(start_lat, start_lon).await?;
-    let end = find_nearest_node(end_lat, end_lon).await?;
-
-    // Definir la heurística para el algoritmo A*.
-    let heuristic = |(lat, lon): Coordinate| -> OrderedFloat<f64> {
-        OrderedFloat(
-            ((lat.into_inner() - end.0.into_inner()).powi(2)
-                + (lon.into_inner() - end.1.into_inner()).powi(2))
-                .sqrt(),
-        )
-    };
-
-    // Ejecutar el algoritmo A* con los nodos encontrados.
-    match astar(&graph, start, end, heuristic) {
-        Some((_, path)) => {
-            let geojson = format!(
-                "{{\"type\": \"LineString\", \"coordinates\": [{}]}}",
-                path.iter()
-                    .map(|(lat, lon)| format!("[{}, {}]", lon.into_inner(), lat.into_inner()))
-                    .collect::<Vec<_>>()
-                    .join(", ")
-            );
-            Ok(geojson)
-        }
-        None => Err("No route found".into()),
-    }
-}
-async fn find_nearest_node(lat: f64, lon: f64) -> Result<Coordinate, Box<dyn std::error::Error>> {
-    let client = crate::db::connect_to_db().await?;
-
+pub async fn find_route(
+    start_lat: f64,
+    start_lng: f64,
+    end_lat: f64,
+    end_lng: f64,
+    client: &Client,
+) -> Result<Vec<Route>, Error> {
     let query = "
-        SELECT
-            ST_X(ST_Transform(way, 4326)) AS lon,
-            ST_Y(ST_Transform(way, 4326)) AS lat
-        FROM planet_osm_point
-        WHERE ST_DWithin(
-            ST_Transform(way, 4326)::geography,
-            ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography, 
-            100
+        WITH start_point AS (
+            SELECT 
+                way 
+            FROM 
+                planet_osm_point 
+            WHERE 
+                ST_DWithin(
+                    way, 
+                    ST_SetSRID(ST_Point($1, $2), 4326), 
+                    0.01
+                )
+            ORDER BY 
+                ST_Distance(
+                    way, 
+                    ST_SetSRID(ST_Point($1, $2), 4326)
+                )
+            LIMIT 1
+        ),
+        end_point AS (
+            SELECT 
+                way 
+            FROM 
+                planet_osm_point 
+            WHERE 
+                ST_DWithin(
+                    way, 
+                    ST_SetSRID(ST_Point($3, $4), 4326), 
+                    0.01
+                )
+            ORDER BY 
+                ST_Distance(
+                    way, 
+                    ST_SetSRID(ST_Point($3, $4), 4326)
+                )
+            LIMIT 1
         )
-        ORDER BY ST_Distance(
-            ST_Transform(way, 4326)::geography,
-            ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography
-        )
-        LIMIT 1;
+        SELECT 
+            r.id AS route_id,
+            r.bus_id,
+            r.direction_id,
+            ST_AsGeoJSON(r.geometry)::TEXT AS route_geometry,
+            NULL AS distance,
+            b.number_route,
+            b.code_route,
+            b.fees,
+            b.special_fees,
+            b.first_trip,
+            b.last_trip,
+            b.frequency::TEXT,
+            b.photo_url
+        FROM 
+            routes r
+        JOIN 
+            buses b ON r.bus_id = b.id
+        WHERE 
+            ST_Intersects(r.geometry, (SELECT way FROM start_point)) AND
+            ST_Intersects(r.geometry, (SELECT way FROM end_point))
+        LIMIT 10;
     ";
 
-    let row = client.query_opt(query, &[&lon, &lat]).await?;
+    let rows = client.query(query, &[&start_lng, &start_lat, &end_lng, &end_lat]).await?;
 
-    if let Some(row) = row {
-        let nearest = (
-            OrderedFloat(row.get::<_, f64>(1)), // lat
-            OrderedFloat(row.get::<_, f64>(0)), // lon
-        );
-        Ok(nearest)
-    } else {
-        Err("No nearby node found".into())
-    }
+    let routes: Vec<Route> = rows
+    .iter()
+    .map(|row| {
+        // Obtén el JSON como un string
+        let geometry_json: String = row.get(3);
+
+        // Deserializa el JSON manualmente
+        let route_geometry: Value = serde_json::from_str(&geometry_json).unwrap_or(Value::Null);
+
+        Route {
+            route_id: row.get(0),
+            bus_id: row.get(1),
+            direction_id: row.get(2),
+            route_geometry, // Ahora es un `serde_json::Value`
+            distance: row.get(4),
+            number_route: row.get(5),
+            code_route: row.get(6),
+            fees: row.get(7),
+            special_fees: row.get(8),
+            first_trip: row.get(9),
+            last_trip: row.get(10),
+            frequency: row.get(11),
+            photo_url: row.get(12),
+        }
+    })
+    .collect();
+
+    Ok(routes)
 }
