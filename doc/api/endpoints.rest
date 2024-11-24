@@ -6,5 +6,17 @@ GET http://localhost:8087/api/places?name=izalco
 GET http://localhost:8087/api/nearby_routes?latitude=13.6894&longitude=-89.1872&max_distance=1000
 
 ### Obtener rutas por número de ruta
-GET http://localhost:8087/api/by_number?number_route=53
+GET http://localhost:8087/api/by_number?number_route=65
 Accept: application/json
+
+### Consulta el endpoint /bus_route con los parámetros start_lat, start_lon, end_lat, end_lon
+
+## punto de inicio: 13.70895, -89.19336
+## punto de fin: 13.68074, -89.24372
+
+GET http://localhost:8087/api/bus_route?start_lat=13.70895&start_lng=-89.19336&end_lat=13.68074&end_lng=-89.24372
+
+### Plan route
+# /api/plan_routes?start_lat=<1>&start_lng=<2>&end_lat=<3>&end_lng=<4>
+
+GET http://localhost:8087/api/plan_routes?start_lat=13.70895&start_lng=-89.19336&end_lat=13.68074&end_lng=-89.24372
