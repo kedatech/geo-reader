@@ -1,0 +1,24 @@
+[[files]]
+input_path = "../../data/LIM DEPARTAMENTALES.geojson"
+type_name = "LimDepartamentales"
+output_path = "../../data/LIM DEPARTAMENTALES.bin"
+
+[[files]]
+input_path = "../../data/Paradas Transporte Colectivo AMSS.geojson"
+type_name = "ParadaTransporte"
+output_path = "../../data/Paradas Transporte Colectivo AMSS.bin"
+
+[[files]]
+input_path = "../../data/Rutas Interdepartamentales.geojson"
+type_name = "Ruta"
+output_path = "../../data/Rutas Interdepartamentales.bin"
+
+[[files]]
+input_path = "../../data/Rutas Interurbanas.geojson"
+type_name = "Ruta"
+output_path = "../../data/Rutas Interurbanas.bin"
+
+[[files]]
+input_path = "../../data/Rutas Urbanas.geojson"
+type_name = "Ruta"
+output_path = "../../data/Rutas Urbanas.bin"
