@@ -1,103 +1,108 @@
+use geo::Coord;
 use serde::{Deserialize, Serialize};
-use geo_types::{Point, LineString, MultiPolygon};
+use geo_types::{Point, MultiPolygon, Polygon, LineString};
+use serde::de::{self, Deserializer, Visitor, SeqAccess};
+use std::fmt;
 
-// Tipos para los archivos GeoJSON originales
-#[derive(Debug, Clone, Serialize, Deserialize,PartialEq)]
-pub struct Department {
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct GeoJsonFeatureCollection<T> {
+    pub r#type: String,
+    pub name: String,
+    pub crs: GeoJsonCrs,
+    pub features: Vec<GeoJsonFeature<T>>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct GeoJsonCrs {
+    pub r#type: String,
+    pub properties: GeoJsonCrsProperties,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct GeoJsonCrsProperties {
+    pub name: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct GeoJsonFeature<T> {
+    pub r#type: String,
+    pub properties: T,
+    pub geometry: GeoJsonGeometry,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(tag = "type")]
+pub enum GeoJsonGeometry {
+    Point { coordinates: [f64; 2] },
+    LineString { coordinates: Vec<[f64; 2]> },
+    Polygon { coordinates: Vec<Vec<[f64; 2]>> },
+    MultiPolygon { coordinates: Vec<Vec<Vec<[f64; 2]>>> },
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct DepartmentProperties {
     pub fcode: String,
     pub cod: i32,
-    pub na2: String,     // nombre del departamento
+    pub na2: String,
+    pub na3: String,
     pub nam: String,
     pub area_km: f64,
-    pub geometry: MultiPolygon<f64>,
+    pub perimetro: f64,
+    pub shape_leng: f64,
+    pub shape_area: f64,
 }
 
+pub type DepartmentFeatureCollection = GeoJsonFeatureCollection<DepartmentProperties>;
+
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub struct BusStop {
-    pub route: String,           // código de ruta
-    pub parada_pgo: String,     // nombre de parada
+pub struct BusStopProperties {
+    #[serde(rename = "FID_L0Coor")]
+    pub fid_l0coor: i32,
+    #[serde(rename = "Ruta")]
+    pub ruta: String,
+    #[serde(rename = "Cod")]
+    pub cod: String,
+    #[serde(rename = "Coordenada")]
+    pub coordenada: String,
     pub latitud: f64,
     pub longitud: f64,
-    pub nam: String,            // departamento
-    pub geometry: Point<f64>,
+    #[serde(rename = "FCODE")]
+    pub fcode: Option<String>,
+    #[serde(rename = "NA2")]
+    pub na2: String,
+    #[serde(rename = "NA3")]
+    pub na3: String,
+    #[serde(rename = "NAM")]
+    pub nam: String,
 }
 
+pub type BusStopFeatureCollection = GeoJsonFeatureCollection<BusStopProperties>;
+
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub struct Route {
+pub struct RouteProperties {
     #[serde(rename = "Código_de")]
-    pub codigo_de: String,      // código completo
+    pub codigo_de: String,
     #[serde(rename = "Nombre_de_")]
-    pub nombre_de: String,      // código corto amigable (ej: "202-A")
-    pub sentido: RouteDirection,
+    pub nombre_de: String,
+    #[serde(rename = "SENTIDO")]
+    pub sentido: String,
     #[serde(rename = "TIPO")]
-    pub tipo: RouteType,
+    pub tipo: String,
     #[serde(rename = "SUBTIPO")]
-    pub subtipo: RouteSubtype,
+    pub subtipo: String,
     #[serde(rename = "DEPARTAMEN")]
     pub departamento: String,
     #[serde(rename = "Kilómetro")]
     pub kilometro: String,
-    pub geometry: LineString<f64>,
+    #[serde(rename = "CANTIDAD_D")]
+    pub cantidad_d: i32,
+    #[serde(rename = "Shape_Leng")]
+    pub shape_leng: f64,
 }
 
-// Enums normalizados para los valores fijos
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "UPPERCASE")]
-pub enum RouteDirection {
-    #[serde(rename = "IDA")]
-    #[serde(alias = "Ida")]
-    Outbound,
-    #[serde(rename = "REGRESO")]
-    #[serde(alias = "Regreso")]
-    Return,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub enum RouteType {
-    #[serde(rename = "POR AUTOBUS")]
-    Bus,
-    #[serde(rename = "POR MICROBUS")]
-    #[serde(alias = "POR MICROBUSES")]
-    Microbus,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub enum RouteSubtype {
-    #[serde(rename = "INTERDEPARTAMENTAL")]
-    Interdepartmental,
-    #[serde(rename = "INTERURBANO")]
-    #[serde(alias = "INTERURBANA")]
-    Interurban,
-    #[serde(rename = "URBANO")]
-    #[serde(alias = "URBANA")]
-    Urban,
-}
-
-// Estructura para mantener los mappings normalizados
-pub struct NormalizedValues;
-
-impl NormalizedValues {
-    pub const TIPO_BUS: &'static [(&'static str, RouteType)] = &[
-        ("POR AUTOBUS", RouteType::Bus),
-        ("POR MICROBUS", RouteType::Microbus),
-        ("POR MICROBUSES", RouteType::Microbus),
-    ];
-    
-    pub const SENTIDO: &'static [(&'static str, RouteDirection)] = &[
-        ("IDA", RouteDirection::Outbound),
-        ("Ida", RouteDirection::Outbound),
-        ("REGRESO", RouteDirection::Return),
-        ("Regreso", RouteDirection::Return),
-    ];
-
-    pub const SUBTIPO: &'static [(&'static str, RouteSubtype)] = &[
-        ("INTERDEPARTAMENTAL", RouteSubtype::Interdepartmental),
-        ("URBANO", RouteSubtype::Urban),
-        ("URBANA", RouteSubtype::Urban),
-        ("INTERURBANO", RouteSubtype::Interurban),
-        ("INTERURBANA", RouteSubtype::Interurban),
-    ];
-}
+pub type RouteFeatureCollection = GeoJsonFeatureCollection<RouteProperties>;
 
 // Tipos para la planificación de rutas
 #[derive(Debug, Clone, PartialEq)]
@@ -110,16 +115,16 @@ pub enum TransferType {
 #[derive(Debug, Clone, PartialEq)]
 pub struct TransferPoint {
     pub location: Point<f64>,
-    pub bus_stop: Option<BusStop>,    // Puede no haber parada registrada
+    pub bus_stop: Option<BusStopProperties>,
     pub distance_to_route: f64,
     pub transfer_type: TransferType,
-    pub from_route: String,  // código de ruta origen
-    pub to_route: String,    // código de ruta destino
+    pub from_route: String,
+    pub to_route: String,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct RouteSegment {
-    pub route: Route,
+    pub route: RouteProperties,
     pub transfer_point: TransferPoint,
     pub transfer_type: TransferType,
     pub segment_distance: f64,
@@ -157,9 +162,9 @@ pub enum PlanningError {
 pub struct RouteRequest {
     pub origin: Point<f64>,
     pub destination: Point<f64>,
-    pub max_route_distance: f64,     // 5km para encontrar rutas cercanas
-    pub max_transfer_distance: f64,  // 1km para transbordos próximos
-    pub max_transfers: i32,          // 10 transbordos máximo
+    pub max_route_distance: f64,
+    pub max_transfer_distance: f64,
+    pub max_transfers: i32,
 }
 
 // Implementaciones de métodos útiles
