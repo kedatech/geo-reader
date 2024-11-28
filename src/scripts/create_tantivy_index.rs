@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use std::fs::{self, File};
+use std::fs::{File, create_dir_all, remove_dir_all};
 use std::io::BufReader;
 use std::path::Path;
 use tantivy::{schema::*, Document, Index};
@@ -98,7 +98,7 @@ impl IndexFields {
 }
 
 trait ToDocument {
-    fn to_document(&self, fields: &IndexFields) -> Document;
+    fn to_document(&self, fields: &IndexFields, geometry: &Geometry) -> Document;
 }
 
 impl<T> Feature<T> 
@@ -106,26 +106,48 @@ where
     T: ToDocument + std::fmt::Debug,
 {
     fn to_document(&self, fields: &IndexFields) -> Document {
-        self.properties.to_document(fields)
+        self.properties.to_document(fields, &self.geometry)
     }
 }
 
 impl ToDocument for LimDepartamentales {
-    fn to_document(&self, fields: &IndexFields) -> Document {
+    fn to_document(&self, fields: &IndexFields, geometry: &Geometry) -> Document {
         let mut doc = Document::default();
         if let Some(name) = &self.nam {
             doc.add_text(fields.name, name);
+            info!("Indexando departamento: {}", name);
         }
         if let Some(na2) = &self.na2 {
             doc.add_text(fields.description, na2);
         }
+        
+        // Guardar geometría completa
+        let geometry_json = serde_json::json!({
+            "type": geometry.geometry_type,
+            "coordinates": geometry.coordinates
+        });
+        doc.add_text(fields.geometry, geometry_json.to_string());
+        
+        // Extraer primer punto para indexación espacial
+        if let Some(coords) = geometry.coordinates.as_array() {
+            if !coords.is_empty() {
+                if let Some(first_point) = coords[0].as_array() {
+                    if let (Some(lon), Some(lat)) = (first_point[0].as_f64(), first_point[1].as_f64()) {
+                        doc.add_f64(fields.longitude, lon);
+                        doc.add_f64(fields.latitude, lat);
+                        info!("Coordenadas centrales: lon={}, lat={}", lon, lat);
+                    }
+                }
+            }
+        }
+        
         doc.add_text(fields.tipo, "departamento");
         doc
     }
 }
 
 impl ToDocument for ParadaTransporte {
-    fn to_document(&self, fields: &IndexFields) -> Document {
+    fn to_document(&self, fields: &IndexFields, geometry: &Geometry) -> Document {
         let mut doc = Document::default();
         if let Some(parada) = &self.parada_pgo {
             doc.add_text(fields.name, parada);
@@ -140,13 +162,20 @@ impl ToDocument for ParadaTransporte {
         if let Some(lon) = self.longitud {
             doc.add_f64(fields.longitude, lon);
         }
+        
+        let geometry_json = serde_json::json!({
+            "type": geometry.geometry_type,
+            "coordinates": geometry.coordinates
+        });
+        doc.add_text(fields.geometry, geometry_json.to_string());
+        
         doc.add_text(fields.tipo, "parada");
         doc
     }
 }
 
 impl ToDocument for Ruta {
-    fn to_document(&self, fields: &IndexFields) -> Document {
+    fn to_document(&self, fields: &IndexFields, geometry: &Geometry) -> Document {
         let mut doc = Document::default();
         if let Some(nombre) = &self.nombre_de {
             doc.add_text(fields.name, nombre);
@@ -161,10 +190,30 @@ impl ToDocument for Ruta {
         if let Some(km) = self.kilometro {
             doc.add_f64(fields.distance, km);
         }
+        
+        let geometry_json = serde_json::json!({
+            "type": geometry.geometry_type,
+            "coordinates": geometry.coordinates
+        });
+        doc.add_text(fields.geometry, geometry_json.to_string());
+        
+        // Extraer primer punto para indexación espacial
+        if let Some(coords) = geometry.coordinates.as_array() {
+            if !coords.is_empty() {
+                if let Some(first_point) = coords[0].as_array() {
+                    if let (Some(lon), Some(lat)) = (first_point[0].as_f64(), first_point[1].as_f64()) {
+                        doc.add_f64(fields.longitude, lon);
+                        doc.add_f64(fields.latitude, lat);
+                    }
+                }
+            }
+        }
+        
         doc
     }
 }
 
+#[instrument(skip(reader))]
 fn read_features<T>(reader: BufReader<File>) -> Result<Vec<Feature<T>>, IndexError>
 where
     T: for<'de> Deserialize<'de> + std::fmt::Debug,
@@ -189,11 +238,11 @@ where
 fn create_or_open_index(index_path: &Path, schema: Schema) -> Result<Index, IndexError> {
     if index_path.exists() {
         info!("Eliminando índice existente en {:?}", index_path);
-        fs::remove_dir_all(index_path)?;
+        remove_dir_all(index_path)?;
     }
     
     info!("Creando directorio para el índice");
-    fs::create_dir_all(index_path)?;
+    create_dir_all(index_path)?;
     
     info!("Creando nuevo índice");
     Ok(Index::create_in_dir(index_path, schema)?)
@@ -300,7 +349,12 @@ mod tests {
             area_km: Some(100.0),
         };
         
-        let doc = lim.to_document(&fields);
+        let geometry = Geometry {
+            geometry_type: "Point".to_string(),
+            coordinates: serde_json::json!([[-89.2, 13.7]]),
+        };
+        
+        let doc = lim.to_document(&fields, &geometry);
         assert!(doc.get_first(fields.name).is_some());
     }
 }

@@ -2,7 +2,7 @@ use actix_web::{App, HttpServer};
 use dotenv::dotenv;
 use std::env;
 use env_logger::Env;
-use log::info;
+use log::{info, error};
 
 mod db;
 mod api;
@@ -23,6 +23,13 @@ async fn main() -> std::io::Result<()> {
     
     // Cargar variables de entorno
     dotenv().ok();
+
+    // Inicializar el planificador de rutas
+    if let Err(e) = api::handlers::initialize_planner().await {
+        error!("Failed to initialize route planner: {}", e);
+        std::process::exit(1);
+    }
+    info!("Route planner initialized successfully");
 
     let port = env::var("PORT").unwrap_or_else(|_| "8087".to_string());
     let addr = format!("0.0.0.0:{}", port);
