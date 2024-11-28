@@ -148,7 +148,7 @@ impl DataLoader {
         self.routes
             .features
             .iter()
-            .filter(|feature| feature.properties.departamento == department)
+            .filter(|feature| feature.properties.departamento.as_deref() == Some(department))
             .collect()
     }
 
@@ -157,7 +157,7 @@ impl DataLoader {
             .features
             .iter()
             .map(|feature| &feature.properties)
-            .filter(|stop| stop.ruta == route_code)
+            .filter(|stop| stop.ruta.as_deref() == Some(route_code))
             .collect()
     }
 
@@ -166,7 +166,7 @@ impl DataLoader {
             .features
             .iter()
             .map(|feature| &feature.properties)
-            .filter(|route| route.subtipo == "INTERDEPARTAMENTAL")
+            .filter(|route| route.subtipo == Some("INTERDEPARTAMENTAL".to_string()))
             .collect()
     }
 }

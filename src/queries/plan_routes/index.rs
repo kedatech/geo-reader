@@ -80,7 +80,7 @@ impl RoutePlanner {
 
         // 3. Buscar rutas posibles
         info!("Searching for possible routes");
-        debug!("Search request: {:?}", request);
+        // debug!("Search request: {:?}", request);
         
         let mut plans = self.search.find_routes_to_destination(
             request.origin,

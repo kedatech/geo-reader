@@ -33,48 +33,59 @@ pub struct GeoJsonFeature<T> {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(tag = "type")]
 pub enum GeoJsonGeometry {
-    Point { coordinates: [f64; 2] },
-    LineString { coordinates: Vec<[f64; 2]> },
-    Polygon { coordinates: Vec<Vec<[f64; 2]>> },
-    MultiPolygon { coordinates: Vec<Vec<Vec<[f64; 2]>>> },
+    Point { coordinates: Vec<f64> },
+    LineString { coordinates: Vec<Vec<f64>> },
+    Polygon { coordinates: Vec<Vec<Vec<f64>>> },
+    MultiPolygon { coordinates: Vec<Vec<Vec<Vec<f64>>>> },
+    MultiLineString { coordinates: Vec<Vec<Vec<f64>>> },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct DepartmentProperties {
-    pub fcode: String,
-    pub cod: i32,
-    pub na2: String,
-    pub na3: String,
+    #[serde(rename = "FCODE")]
+    pub fcode: Option<String>,
+    #[serde(rename = "COD")]
+    pub cod: Option<i32>,
+    #[serde(rename = "NA2")]
+    pub na2: Option<String>,
+    #[serde(rename = "NA3")]
+    pub na3: Option<String>,
+    #[serde(rename = "NAM")]
     pub nam: String,
-    pub area_km: f64,
-    pub perimetro: f64,
-    pub shape_leng: f64,
-    pub shape_area: f64,
+    #[serde(rename = "AREA_KM")]
+    pub area_km: Option<f64>,
+    #[serde(rename = "PERIMETRO")]
+    pub perimetro: Option<f64>,
+    #[serde(rename = "SHAPE_LENG")]
+    pub shape_leng: Option<f64>,
+    #[serde(rename = "SHAPE_AREA")]
+    pub shape_area: Option<f64>,
 }
-
 pub type DepartmentFeatureCollection = GeoJsonFeatureCollection<DepartmentProperties>;
 
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct BusStopProperties {
     #[serde(rename = "FID_L0Coor")]
-    pub fid_l0coor: i32,
+    pub fid_l0coor: Option<i32>,
     #[serde(rename = "Ruta")]
-    pub ruta: String,
+    pub ruta: Option<String>,
     #[serde(rename = "Cod")]
-    pub cod: String,
+    pub cod: Option<String>,
     #[serde(rename = "Coordenada")]
-    pub coordenada: String,
-    pub latitud: f64,
-    pub longitud: f64,
+    pub coordenada: Option<String>,
+    #[serde(rename = "Latitud")]
+    pub latitud: Option<f64>,
+    #[serde(rename = "Longitud")]
+    pub longitud: Option<f64>,
     #[serde(rename = "FCODE")]
     pub fcode: Option<String>,
     #[serde(rename = "NA2")]
-    pub na2: String,
+    pub na2: Option<String>,
     #[serde(rename = "NA3")]
-    pub na3: String,
+    pub na3: Option<String>,
     #[serde(rename = "NAM")]
-    pub nam: String,
+    pub nam: Option<String>,
 }
 
 pub type BusStopFeatureCollection = GeoJsonFeatureCollection<BusStopProperties>;
@@ -83,37 +94,59 @@ pub type BusStopFeatureCollection = GeoJsonFeatureCollection<BusStopProperties>;
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct RouteProperties {
     #[serde(rename = "Código_de")]
-    pub codigo_de: String,
+    pub codigo_de: Option<String>,
     #[serde(rename = "Nombre_de_")]
-    pub nombre_de: String,
+    pub nombre_de: Option<String>,
     #[serde(rename = "SENTIDO")]
-    pub sentido: String,
+    pub sentido: Option<String>,
     #[serde(rename = "TIPO")]
-    pub tipo: String,
+    pub tipo: Option<String>,
     #[serde(rename = "SUBTIPO")]
-    pub subtipo: String,
+    pub subtipo: Option<String>,
     #[serde(rename = "DEPARTAMEN")]
-    pub departamento: String,
+    pub departamento: Option<String>,
     #[serde(rename = "Kilómetro")]
-    pub kilometro: String,
+    pub kilometro: Option<String>,
     #[serde(rename = "CANTIDAD_D")]
-    pub cantidad_d: i32,
+    pub cantidad_d: Option<i32>,
     #[serde(rename = "Shape_Leng")]
-    pub shape_leng: f64,
+    pub shape_leng: Option<f64>,
 }
 
 pub type RouteFeatureCollection = GeoJsonFeatureCollection<RouteProperties>;
 
 // Tipos para la planificación de rutas
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum TransferType {
     Direct,    // Misma parada
     Near,      // <= 500m
     Proximate, // <= 1km
 }
 
-#[derive(Debug, Clone, PartialEq)]
+
+mod point_serde {
+    use serde::{Deserialize, Deserializer, Serialize, Serializer};
+    use geo_types::Point;
+
+    pub fn serialize<S>(point: &Point<f64>, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        (point.x(), point.y()).serialize(serializer)
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Point<f64>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let (x, y) = <(f64, f64)>::deserialize(deserializer)?;
+        Ok(Point::new(x, y))
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct TransferPoint {
+    #[serde(with = "point_serde")]
     pub location: Point<f64>,
     pub bus_stop: Option<BusStopProperties>,
     pub distance_to_route: f64,
